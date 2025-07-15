@@ -1,0 +1,46 @@
+name: RocketM2 Firmware
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Clone OpenWRT
+      run: git clone --branch v19.07.10 --depth 1 https://github.com/openwrt/openwrt.git
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libncurses5-dev gawk git \
+          wget subversion file libssl-dev gettext unzip python3 python
+
+    - name: Setup Feeds
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Copy Config
+      run: cp .config openwrt/.config
+
+    - name: Build Firmware
+      run: |
+        cd openwrt
+        make defconfig
+        make -j$(nproc) download
+        make -j$(nproc)
+
+    - name: Upload Firmware
+      uses: actions/upload-artifact@v4
+      with:
+        name: RocketM2 Firmware
+        path: openwrt/bin/
